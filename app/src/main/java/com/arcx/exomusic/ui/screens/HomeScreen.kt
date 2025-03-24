@@ -171,7 +171,6 @@ fun PlayerBottomBar(media: MediaModel, duration: Long, totalDuration: Long, view
             }
             .clickable { scope.launch { sheetScaffoldState.bottomSheetState.expand() } }
     ) {
-
         Spacer(Modifier.width(12.dp))
 
         Box(
