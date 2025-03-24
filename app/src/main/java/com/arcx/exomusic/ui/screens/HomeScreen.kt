@@ -109,7 +109,7 @@ fun HomeScreen(modifier: Modifier = Modifier, viewModel: HomeScreenViewModel = h
                 ) {
                     when (scaffoldState.bottomSheetState.currentValue) {
                         SheetValue.PartiallyExpanded -> PlayerBottomBar(selectedTrack.value, currentPosition, selectedTrack.value.duration.toLong(), viewModel, scaffoldState)
-                        SheetValue.Hidden -> TODO()
+                        SheetValue.Hidden -> null
                         SheetValue.Expanded -> PlayerTopContent(
                             selectedTrack.value,
                             viewModel,
