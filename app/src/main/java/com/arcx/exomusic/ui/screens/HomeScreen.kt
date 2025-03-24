@@ -1,10 +1,5 @@
 package com.arcx.exomusic.ui.screens
 
-import android.graphics.drawable.VectorDrawable
-import android.util.Log
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateValue
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
@@ -21,19 +16,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.BottomSheetScaffoldState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
@@ -45,7 +35,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,7 +44,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.VectorPainter
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -63,17 +51,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.PlayerNotificationManager
 import coil3.compose.AsyncImage
-import coil3.compose.LocalPlatformContext
 import com.arcx.exomusic.R
 import com.arcx.exomusic.model.MediaModel
 import com.arcx.exomusic.ui.components.MediaCards
+import com.arcx.exomusic.ui.components.PainterState
 import com.arcx.exomusic.utils.PlayerState
 import com.arcx.exomusic.utils.RepeatModes
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 
@@ -118,13 +102,20 @@ fun HomeScreen(modifier: Modifier = Modifier, viewModel: HomeScreenViewModel = h
         BottomSheetScaffold(
             sheetContent = {
                 Column(
-                    modifier = Modifier.fillMaxWidth().fillMaxHeight(0.75f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(0.75f),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     when (scaffoldState.bottomSheetState.currentValue) {
                         SheetValue.PartiallyExpanded -> PlayerBottomBar(selectedTrack.value, currentPosition, selectedTrack.value.duration.toLong(), viewModel, scaffoldState)
                         SheetValue.Hidden -> TODO()
-                        SheetValue.Expanded -> PlayerTopContent(selectedTrack.value, viewModel, currentPosition, selectedTrack.value.duration.toLong(), exoPlayer)
+                        SheetValue.Expanded -> PlayerTopContent(
+                            selectedTrack.value,
+                            viewModel,
+                            currentPosition,
+                            selectedTrack.value.duration.toLong()
+                        )
                     }
                 }
             },
@@ -155,10 +146,11 @@ fun HomeScreen(modifier: Modifier = Modifier, viewModel: HomeScreenViewModel = h
 @Composable
 fun PlayerBottomBar(media: MediaModel, duration: Long, totalDuration: Long, viewModel: HomeScreenViewModel, sheetScaffoldState: BottomSheetScaffoldState) {
 
-    val currentPosition = remember(duration) { mutableLongStateOf(duration) }
     val scope = rememberCoroutineScope()
 
     val playerState by viewModel.playerState.collectAsState()
+
+    val painterState = remember(media) { mutableStateOf(PainterState.LOADING) }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -176,7 +168,8 @@ fun PlayerBottomBar(media: MediaModel, duration: Long, totalDuration: Long, view
                     end = Offset(x = size.width * progress, y = 1.dp.toPx()),
                     strokeWidth = Stroke.DefaultMiter
                 )
-            }.clickable { scope.launch { sheetScaffoldState.bottomSheetState.expand() } }
+            }
+            .clickable { scope.launch { sheetScaffoldState.bottomSheetState.expand() } }
     ) {
 
         Spacer(Modifier.width(12.dp))
@@ -184,11 +177,31 @@ fun PlayerBottomBar(media: MediaModel, duration: Long, totalDuration: Long, view
         Box(
             Modifier.size(50.dp)
         ) {
-            AsyncImage(
-                media.albumArt,
-                "Album Art",
-                modifier = Modifier.clip(RoundedCornerShape(8.dp))
-            )
+            when (painterState.value) {
+                PainterState.LOADING, PainterState.SUCCESS -> {
+                    AsyncImage(
+                        media.albumArt,
+                        "Album Art",
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .fillMaxSize(),
+                        onError = { painterState.value = PainterState.ERROR },
+                        onLoading = { painterState.value = PainterState.LOADING }
+                    )
+                }
+
+                PainterState.ERROR -> {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.music_notes),
+                        contentDescription = "Album Art",
+                        tint = Color.White,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.DarkGray)
+                            .fillMaxSize()
+                    )
+                }
+            }
         }
 
         Column(
@@ -218,7 +231,12 @@ fun PlayerBottomBar(media: MediaModel, duration: Long, totalDuration: Long, view
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlayerTopContent(media: MediaModel, viewModel: HomeScreenViewModel, duration: Long, totalDuration: Long, exoPlayer: ExoPlayer) {
+fun PlayerTopContent(
+    media: MediaModel,
+    viewModel: HomeScreenViewModel,
+    duration: Long,
+    totalDuration: Long
+) {
 
     val playerState by viewModel.playerState.collectAsState()
 
@@ -228,9 +246,9 @@ fun PlayerTopContent(media: MediaModel, viewModel: HomeScreenViewModel, duration
 
     val interactionSource = remember { MutableInteractionSource() }
 
-    val infiniteTransition = rememberInfiniteTransition()
-
     var shuffleMode by remember { mutableStateOf(false) }
+
+    val painterState = remember(media) { mutableStateOf(PainterState.LOADING) }
 
     Column(
         modifier = Modifier.fillMaxWidth(0.85f),
@@ -240,12 +258,32 @@ fun PlayerTopContent(media: MediaModel, viewModel: HomeScreenViewModel, duration
 
         Spacer(Modifier.width(12.dp))
 
-        AsyncImage(
-            model = media.albumArt,
-            "Album Art",
-            modifier = Modifier
-                .fillMaxHeight(0.5f)
-        )
+        Box(
+            modifier = Modifier.fillMaxHeight(0.5f)
+        ) {
+            when (painterState.value) {
+                PainterState.LOADING, PainterState.SUCCESS -> {
+                    AsyncImage(
+                        model = media.albumArt,
+                        "Album Art",
+                        modifier = Modifier.fillMaxSize(),
+                        onLoading = { painterState.value = PainterState.LOADING },
+                        onError = { painterState.value = PainterState.ERROR }
+                    )
+                }
+
+                PainterState.ERROR -> {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.music_notes),
+                        contentDescription = "Album Art",
+                        tint = Color.White,
+                        modifier = Modifier
+                            .background(Color.DarkGray)
+                            .fillMaxSize()
+                    )
+                }
+            }
+        }
 
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
