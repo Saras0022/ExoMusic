@@ -12,10 +12,8 @@
 
 # Tech Stack
 * Kotlin
-* Compose
+* Jetpack Compose
 * MVVM
-* Clean Architecture
-* Dependency Injection - Hilt
+* Dependency Injection - Dagger/Hilt
 * Player - ExoPlayer with Media3
-* Design - MD3
-* Image Parsing - Coil and Glide
+* Image Parsing - Coil
