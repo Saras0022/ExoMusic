@@ -9,3 +9,13 @@
 <p>
   <img src="https://github.com/Saras0022/ExoMusic/blob/master/app/src/main/java/com/arcx/exomusic/screenshots/Screenshot_20250324_124626_Exo%20Music.jpg" height="600" />
 </p>
+
+# Tech Stack
+* Kotlin
+* Compose
+* MVVM
+* Clean Architecture
+* Dependency Injection - Hilt
+* Player - ExoPlayer with Media3
+* Design - MD3
+* Image Parsing - Coil and Glide
